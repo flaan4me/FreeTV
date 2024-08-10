@@ -1,234 +1,449 @@
 package com.phstudio.freetv.player
 
 import android.annotation.SuppressLint
-import android.graphics.Rect
+import android.app.Activity
+import android.app.PictureInPictureParams
+import android.content.Context
+import android.content.Intent
+import android.content.pm.ActivityInfo
+import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.media.AudioManager
 import android.os.Build
 import android.os.Bundle
-import android.provider.Settings
-import android.view.*
+import android.os.Handler
+import android.os.Looper
+import android.util.Rational
+import android.view.GestureDetector
+import android.view.MotionEvent
+import android.view.View
+import android.view.WindowInsets
+import android.view.WindowInsetsController
+import android.widget.FrameLayout
+import android.widget.ImageButton
+import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
-import android.widget.VideoView
+import androidx.activity.result.contract.ActivityResultContracts.OpenDocument
+import androidx.annotation.OptIn
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.widget.AppCompatImageView
+import androidx.core.content.ContextCompat
+import androidx.media3.common.C
+import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
+import androidx.media3.common.TrackSelectionOverride
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
+import androidx.media3.ui.AspectRatioFrameLayout
 import com.phstudio.freetv.R
+import com.phstudio.freetv.R.id
 import com.phstudio.freetv.R.layout
-import java.util.*
-import kotlin.concurrent.schedule
-import kotlin.math.abs
-
+import com.phstudio.freetv.databinding.ActivityPlayerBinding
 
 class PlayerActivity : AppCompatActivity() {
 
-    var vLightControl: LightControl? = null
-    var vVolumeControl: VolumeControl? = null
-    var audioManager: AudioManager? = null
-    private var gestureDetector: GestureDetector? = null
-    var volume = 0
-    var brightness = 0f
-    private var ivPlayer: AppCompatImageView? = null
-    private var ivFullscreen: AppCompatImageView? = null
-    private var tvPlayer: TextView? = null
-    private var vvPlayer: VideoView? = null
-    private var link: String? = null
+    private lateinit var zoomButton: ImageButton
+    private lateinit var pipButton: ImageButton
+    private lateinit var screenRotateButton: ImageButton
+    private lateinit var playNext: ImageButton
+    private lateinit var playPrev: ImageButton
+    private lateinit var backButton: ImageButton
+    private lateinit var videoName: TextView
+    private lateinit var unlockButton: ImageButton
+    private lateinit var lockButton: ImageButton
+    private lateinit var playerUnlockControls: FrameLayout
+    private lateinit var playerLockControls: FrameLayout
+    private lateinit var playbackSpeedButton: ImageButton
+    private lateinit var audioTrackButton: ImageButton
+    private lateinit var subtitleTrackButton: ImageButton
 
-    @SuppressLint("ClickableViewAccessibility")
+    private lateinit var gestureDetector: GestureDetector
+    private lateinit var volumeProgressBar: ProgressBar
+    private lateinit var volumeProgressText: TextView
+    private lateinit var brightnessProgressBar: ProgressBar
+    private lateinit var brightnessProgressText: TextView
+    private val volumeHideHandler = Handler(Looper.getMainLooper())
+    private val brightnessHideHandler = Handler(Looper.getMainLooper())
+
+    private lateinit var binding: ActivityPlayerBinding
+    private lateinit var player: ExoPlayer
+    private var currentZoom: VideoZoom = VideoZoom.BEST_FIT
+
+    @SuppressLint("UnsafeOptInUsageError")
+    private lateinit var trackSelector: DefaultTrackSelector
+    private var link: String? = ""
+
+    private val isPipSupported: Boolean by lazy {
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && packageManager.hasSystemFeature(
+            PackageManager.FEATURE_PICTURE_IN_PICTURE
+        )
+    }
+
+    @OptIn(UnstableApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(layout.activity_player)
 
-        vvPlayer = findViewById(R.id.vvPlayer)
-        ivPlayer = findViewById(R.id.ivPlayer)
-        tvPlayer = findViewById(R.id.tvPlayer)
-        ivFullscreen = findViewById(R.id.ivFullscreen)
-        vLightControl = findViewById(R.id.lcPlayer)
-        vVolumeControl = findViewById(R.id.vcPlayer)
+        binding = ActivityPlayerBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
-        ivFullscreen?.setOnClickListener{
-            setFullScreen()
-        }
+        player = ExoPlayer.Builder(this).build()
+        binding.playerView.player = player
 
-        val currentBrightness = Settings.System.getInt(
-            contentResolver,
-            Settings.System.SCREEN_BRIGHTNESS
-        )
+        volumeProgressBar = findViewById(id.volume_progress_bar)
+        volumeProgressText = findViewById(id.volume_progress_text)
+        brightnessProgressBar = findViewById(id.brightness_progress_bar)
+        brightnessProgressText = findViewById(id.brightness_progress_text)
+        setupGestureDetector()
 
-        setBrightness(currentBrightness)
-
-        initView()
-
-        if (supportActionBar != null) {
-            supportActionBar!!.hide()
-        }
+        zoomButton = binding.playerView.findViewById(id.btn_video_zoom)
+        pipButton = binding.playerView.findViewById(id.btn_pip)
+        screenRotateButton = binding.playerView.findViewById(id.screen_rotate)
+        playNext = binding.playerView.findViewById(id.btn_play_next)
+        playPrev = binding.playerView.findViewById(id.btn_play_prev)
+        backButton = binding.playerView.findViewById(id.back_button)
+        videoName = binding.playerView.findViewById(id.video_name)
+        unlockButton = binding.playerView.findViewById(id.btn_unlock_controls)
+        lockButton = binding.playerView.findViewById(id.btn_lock_controls)
+        playerUnlockControls = binding.playerView.findViewById(id.player_unlock_controls)
+        playerLockControls = binding.playerView.findViewById(id.player_lock_controls)
+        playbackSpeedButton = binding.playerView.findViewById(id.btn_playback_speed)
+        audioTrackButton = binding.playerView.findViewById(id.btn_audio_track)
+        subtitleTrackButton = binding.playerView.findViewById(id.btn_subtitle_track)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            window.insetsController?.hide(WindowInsets.Type.statusBars())
+            val decorView = window.decorView
+            val insetsController = decorView.windowInsetsController
+            insetsController?.hide(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())
+            insetsController?.systemBarsBehavior = WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         } else {
-            window.setFlags(
-                WindowManager.LayoutParams.FLAG_FULLSCREEN,
-                WindowManager.LayoutParams.FLAG_FULLSCREEN
-            )
+            @Suppress("DEPRECATION")
+            window.decorView.systemUiVisibility = (View.SYSTEM_UI_FLAG_FULLSCREEN
+                    or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                    or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY)
+        }
+
+        if (!isPipSupported) {
+            pipButton.visibility = View.GONE
         }
 
         val name = intent.getStringExtra("Name")
+        videoName.text = name
 
-        link = name
+        link = intent.getStringExtra("Url")
 
-        vvPlayer!!.setVideoPath(link)
-        vvPlayer!!.requestFocus()
-        vvPlayer!!.start()
+        player.addListener(object : Player.Listener {
+            override fun onPlayerError(error: PlaybackException) {
+                Toast.makeText(
+                    this@PlayerActivity,
+                    getString(R.string.NotStream),
+                    Toast.LENGTH_LONG
+                ).show()
+                (this@PlayerActivity as? Activity)?.finish()
+            }
+        })
+        val mediaItem = MediaItem.fromUri(link!!)
+        player.setMediaItem(mediaItem)
+        player.prepare()
+        player.play()
 
-        vvPlayer!!.setOnErrorListener { _, _, _ ->
-            Toast.makeText(
-                this@PlayerActivity,
-                getString(R.string.NotStream),
-                Toast.LENGTH_SHORT
-            ).show()
-            finish()
-            true
+        lockButton.setOnClickListener {
+            playerUnlockControls.visibility = View.INVISIBLE
+            playerLockControls.visibility = View.VISIBLE
+        }
+
+        unlockButton.setOnClickListener {
+            playerUnlockControls.visibility = View.VISIBLE
+            playerLockControls.visibility = View.INVISIBLE
+        }
+
+        backButton.setOnClickListener {
+            player.pause()
+            onBackPressedDispatcher.onBackPressed()
+        }
+
+        playNext.setOnClickListener {
+            player.seekTo(player.currentPosition + 5000)
+        }
+
+        playPrev.setOnClickListener {
+            player.seekTo(player.currentPosition - 5000)
+        }
+
+        zoomButton.setOnClickListener {
+            toggleVideoZoom()
+        }
+
+        pipButton.setOnClickListener {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && isPipSupported) {
+                this.enterPictureInPictureMode(updatePictureInPictureParams())
+            }
+        }
+
+        screenRotateButton.setOnClickListener {
+            requestedOrientation = when (resources.configuration.orientation) {
+                Configuration.ORIENTATION_LANDSCAPE -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+                else -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+            }
+        }
+
+        playbackSpeedButton.setOnClickListener {
+            PlaybackSpeedControlsDialogFragment(
+                currentSpeed = player.playbackParameters.speed,
+                onChange = {
+                    player.setPlaybackSpeed(it)
+                },
+            ).show(supportFragmentManager, "PlaybackSpeedSelectionDialog")
+        }
+
+        initializeTrackSelector()
+
+        audioTrackButton.setOnClickListener {
+            TrackSelectionDialogFragment(
+                type = C.TRACK_TYPE_AUDIO,
+                tracks = player.currentTracks,
+                onTrackSelected = { player.switchTrack(C.TRACK_TYPE_AUDIO, it) },
+            ).show(supportFragmentManager, "TrackSelectionDialog")
+        }
+
+        subtitleTrackButton.setOnClickListener {
+            TrackSelectionDialogFragment(
+                type = C.TRACK_TYPE_TEXT,
+                tracks = player.currentTracks,
+                onTrackSelected = { player.switchTrack(C.TRACK_TYPE_TEXT, it) },
+            ).show(supportFragmentManager, "TrackSelectionDialog")
         }
     }
 
+    private val subtitleFileLauncher = registerForActivityResult(OpenDocument()) { uri ->
+        if (uri != null) {
+            contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+    }
 
-    private fun initView() {
-        brightness = PlayerObject.scanForActivity(this)?.window!!.attributes.screenBrightness
-        audioManager = this.getSystemService(AUDIO_SERVICE) as AudioManager
-        val listener = object : GestureDetector.SimpleOnGestureListener() {
-            private var firstTouch = false
-            private var changeBrightness = false
-            private var changeVolume = false
-            override fun onDown(e: MotionEvent): Boolean {
-                volume = audioManager!!.getStreamVolume(AudioManager.STREAM_MUSIC)
-                brightness = (this@PlayerActivity).window.attributes.screenBrightness
-                firstTouch = true
-                changeBrightness = false
-                changeVolume = false
-                return true
+    @OptIn(UnstableApi::class)
+    private fun initializeTrackSelector() {
+        trackSelector = DefaultTrackSelector(this).apply {
+            setParameters(buildUponParameters().setPreferredAudioLanguage("en"))
+        }
+    }
+
+    private fun Player.switchTrack(trackType: @C.TrackType Int, trackIndex: Int?) {
+        if (trackIndex == null) return
+        when (trackType) {
+            C.TRACK_TYPE_AUDIO -> "audio"
+            C.TRACK_TYPE_TEXT -> "subtitle"
+            else -> throw IllegalArgumentException("Invalid track type: $trackType")
+        }
+
+        if (trackIndex < 0) {
+            trackSelectionParameters = trackSelectionParameters
+                .buildUpon()
+                .setTrackTypeDisabled(trackType, true)
+                .build()
+        } else {
+            val tracks = currentTracks.groups.filter { it.type == trackType }
+
+            if (tracks.isEmpty() || trackIndex >= tracks.size) {
+                return
             }
 
-            override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
-                playOrPause()
-                return super.onSingleTapConfirmed(e)
+            val trackSelectionOverride =
+                TrackSelectionOverride(tracks[trackIndex].mediaTrackGroup, 0)
+
+            trackSelectionParameters = trackSelectionParameters
+                .buildUpon()
+                .setTrackTypeDisabled(trackType, false)
+                .setOverrideForType(trackSelectionOverride)
+                .build()
+        }
+    }
+
+    private fun toggleVideoZoom() {
+        currentZoom = when (currentZoom) {
+            VideoZoom.BEST_FIT -> VideoZoom.STRETCH
+            VideoZoom.STRETCH -> VideoZoom.CROP
+            VideoZoom.CROP -> VideoZoom.HUNDRED_PERCENT
+            VideoZoom.HUNDRED_PERCENT -> VideoZoom.BEST_FIT
+        }
+        applyVideoZoom(currentZoom)
+    }
+
+    @OptIn(UnstableApi::class)
+    private fun applyVideoZoom(zoom: VideoZoom) {
+        when (zoom) {
+            VideoZoom.BEST_FIT -> {
+                binding.playerView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+                zoomButton.setImageDrawable(
+                    ContextCompat.getDrawable(
+                        this@PlayerActivity,
+                        R.drawable.ic_fit_screen
+                    )
+                )
             }
 
+            VideoZoom.STRETCH -> {
+                binding.playerView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FILL
+                zoomButton.setImageDrawable(
+                    ContextCompat.getDrawable(
+                        this@PlayerActivity,
+                        R.drawable.ic_aspect_ratio
+                    )
+                )
+            }
+
+            VideoZoom.CROP -> {
+                binding.playerView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                zoomButton.setImageDrawable(
+                    ContextCompat.getDrawable(
+                        this@PlayerActivity,
+                        R.drawable.ic_crop_landscape
+                    )
+                )
+
+            }
+
+            VideoZoom.HUNDRED_PERCENT -> {
+                binding.playerView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIXED_WIDTH
+                zoomButton.setImageDrawable(
+                    ContextCompat.getDrawable(
+                        this@PlayerActivity,
+                        R.drawable.ic_width_wide
+                    )
+                )
+
+            }
+        }
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private fun setupGestureDetector() {
+        gestureDetector = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
             override fun onScroll(
-                me1: MotionEvent,
-                me2: MotionEvent,
-                distanceA: Float,
-                distanceB: Float
+                e1: MotionEvent?,
+                e2: MotionEvent,
+                distanceX: Float,
+                distanceY: Float
             ): Boolean {
-                val deltaY = me1.y - me2.y
-                if (firstTouch) {
-                    if (abs(distanceA) < abs(distanceB)) {
-                        if (me2.x > PlayerObject.getScreenWidth(baseContext, true) / 2) {
-                            changeVolume = true
+                e1?.let {
+                    if (playerLockControls.visibility != View.VISIBLE) {
+                        val screenWidth = resources.displayMetrics.widthPixels
+                        if (e1.x < screenWidth / 2) {
+                            adjustBrightness(-distanceY)
                         } else {
-                            changeBrightness = true
+                            adjustVolume(-distanceY)
                         }
                     }
-                    firstTouch = false
-                }
-                if (changeBrightness) {
-                    vLightControl!!.visibility = View.VISIBLE
-                    Timer().schedule(2000) {
-                        vLightControl!!.visibility = View.INVISIBLE
-                    }
-                    changeBrightness(deltaY)
-                } else if (changeVolume) {
-                    vVolumeControl!!.visibility = View.VISIBLE
-                    Timer().schedule(2000) {
-                        vVolumeControl!!.visibility = View.INVISIBLE
-                    }
-                    changeVolume(deltaY)
                 }
                 return true
             }
 
             override fun onDoubleTap(e: MotionEvent): Boolean {
+                if (player.isPlaying) {
+                    player.pause()
+                } else {
+                    player.play()
+                }
                 return true
             }
 
-        }
-        gestureDetector = GestureDetector(this@PlayerActivity, listener)
-        volume = audioManager!!.getStreamVolume(AudioManager.STREAM_MUSIC)
-        brightness = this.window.attributes.screenBrightness
-        changeBrightness(0f)
-        changeVolume(0f)
-    }
+            @UnstableApi
+            override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
+                if (binding.playerView.isControllerFullyVisible) {
+                    binding.playerView.hideController()
+                } else {
+                    binding.playerView.showController()
+                }
+                return super.onSingleTapConfirmed(e)
+            }
+        })
 
-    override fun onTouchEvent(event: MotionEvent?): Boolean {
-        gestureDetector!!.onTouchEvent(event!!)
-        return super.onTouchEvent(event)
-    }
-
-    fun changeBrightness(deltaY: Float) {
-        val window: Window = PlayerObject.scanForActivity(this)!!.window
-        val attributes = window.attributes
-        val height: Int = PlayerObject.getScreenHeight(applicationContext, false)
-        if (brightness == -1.0f) brightness = 0.5f
-        var brightness: Float = deltaY * 2 / height * 1.0f + brightness
-        if (brightness < 0) {
-            brightness = 0f
-        }
-        if (brightness > 1.0f) brightness = 1.0f
-        vLightControl!!.setProgress(brightness)
-        attributes.screenBrightness = brightness
-        window.attributes = attributes
-    }
-
-    fun changeVolume(deltaY: Float) {
-        val streamMaxVolume = audioManager!!.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
-        val height = PlayerObject.getScreenHeight(applicationContext, false)
-        val deltaV = deltaY * 2 / height * streamMaxVolume
-        var index = volume + deltaV
-        if (index > streamMaxVolume) index = streamMaxVolume.toFloat()
-        if (index < 0) {
-            index = 0f
-        }
-        vVolumeControl!!.setProgress(index / streamMaxVolume)
-        audioManager!!.setStreamVolume(AudioManager.STREAM_MUSIC, index.toInt(), 0)
-    }
-
-    fun playOrPause() {
-        if (vvPlayer!!.isPlaying) {
-            vvPlayer!!.pause()
-            ivPlayer!!.visibility = View.VISIBLE
-            tvPlayer!!.text = link.toString()
-            tvPlayer!!.visibility = View.VISIBLE
-            ivFullscreen!!.visibility = View.VISIBLE
-        } else {
-            vvPlayer!!.start()
-            ivPlayer!!.visibility = View.INVISIBLE
-            tvPlayer!!.visibility = View.INVISIBLE
-            vVolumeControl!!.visibility = View.INVISIBLE
-            vLightControl!!.visibility = View.INVISIBLE
-            ivFullscreen!!.visibility = View.INVISIBLE
+        binding.playerView.setOnTouchListener { _, event ->
+            gestureDetector.onTouchEvent(event)
+            true
         }
     }
-    private fun setBrightness(brightnessValue: Int) {
+
+    private fun adjustVolume(distanceY: Float) {
+        val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        val currentVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
+        val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+
+        val volumeChange = (distanceY * 0.05f).toInt()
+        val newVolume = (currentVolume - volumeChange).coerceIn(0, maxVolume)
+        audioManager.setStreamVolume(
+            AudioManager.STREAM_MUSIC,
+            newVolume,
+            AudioManager.FLAG_SHOW_UI
+        )
+
+        updateVolumeUI()
+    }
+
+    private fun adjustBrightness(distanceY: Float) {
         val layoutParams = window.attributes
-        layoutParams.screenBrightness = brightnessValue / 255.0f
-        window.attributes = layoutParams
-    }
-    private fun setFullScreen() {
-        val fullscreen = true
+        val currentBrightness = layoutParams.screenBrightness
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            if (fullscreen) {
-                window.insetsController?.hide(WindowInsets.Type.statusBars())
-            } else {
-                window.insetsController?.show(WindowInsets.Type.systemBars())
-            }
-        } else {
-            if (fullscreen) {
-                window.setFlags(
-                    WindowManager.LayoutParams.FLAG_FULLSCREEN,
-                    WindowManager.LayoutParams.FLAG_FULLSCREEN
-                )
-            } else {
-                window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
-            }
-        }
+        val brightnessChange = (distanceY * 0.002f)
+        val newBrightness = (currentBrightness - brightnessChange).coerceIn(0.0f, 1.0f)
+        layoutParams.screenBrightness = newBrightness
+        window.attributes = layoutParams
+
+        updateBrightnessUI()
+    }
+
+    @SuppressLint("SetTextI18n")
+    private fun updateVolumeUI() {
+        val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        val currentVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
+        val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+        val volumePercentage = (currentVolume.toFloat() / maxVolume * 100).toInt()
+
+        binding.volumeGestureLayout.visibility = View.VISIBLE
+        volumeProgressText.text = "$volumePercentage%"
+        volumeProgressBar.progress = volumePercentage
+        volumeHideHandler.removeCallbacksAndMessages(null)
+        volumeHideHandler.postDelayed({
+            binding.volumeGestureLayout.visibility = View.GONE
+        }, 2000)
+    }
+
+    @SuppressLint("SetTextI18n")
+    private fun updateBrightnessUI() {
+        val brightnessLevel = (window.attributes.screenBrightness * 100).toInt()
+
+        binding.brightnessGestureLayout.visibility = View.VISIBLE
+        brightnessProgressText.text = "$brightnessLevel%"
+        brightnessProgressBar.progress = brightnessLevel
+        brightnessHideHandler.removeCallbacksAndMessages(null)
+        brightnessHideHandler.postDelayed({
+            binding.brightnessGestureLayout.visibility = View.GONE
+        }, 2000)
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun updatePictureInPictureParams(): PictureInPictureParams {
+        val params: PictureInPictureParams = PictureInPictureParams.Builder()
+            .setAspectRatio(Rational(16, 9))
+            .build()
+
+        setPictureInPictureParams(params)
+        return params
+    }
+
+    override fun onPictureInPictureModeChanged(
+        isInPictureInPictureMode: Boolean,
+        newConfig: Configuration
+    ) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        binding.playerView.useController = !isInPictureInPictureMode
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        player.release()
     }
 }

@@ -28,11 +28,17 @@
         <activity android:name=".favorite.FavoriteActivity" />
 
         <activity android:name=".ui.AboutActivity" />
-        <activity android:name=".ui.AdultActivity" />
-        <activity android:name=".ui.ChannelsActivity" />
+        <activity android:name=".ui.CategoriesActivity" />
+        <activity android:name=".ui.LanguagesActivity" />
+        <activity android:name=".ui.CountriesActivity" />
+        <activity android:name=".ui.RegionsActivity" />
 
-        <activity android:name=".player.PlayerActivity" />
-        <activity android:name=".player.LinkActivity" />
+        <activity android:name=".player.PlayerActivity"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|screenLayout|keyboardHidden"
+            android:resizeableActivity="true"
+            android:supportsPictureInPicture="true"
+            android:exported="true"
+            tools:ignore="UnusedAttribute" />
         <activity
             android:name=".player.HTMLActivity"
             android:configChanges="orientation|screenSize"

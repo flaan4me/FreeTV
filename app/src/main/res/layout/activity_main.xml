@@ -183,7 +183,7 @@
             android:orientation="vertical">
 
             <androidx.constraintlayout.widget.ConstraintLayout
-                android:id="@+id/clNews"
+                android:id="@+id/clCountries"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content">
 
@@ -201,7 +201,7 @@
                         android:layout_height="match_parent"
                         android:layout_margin="@dimen/_8sdp"
                         android:scaleType="fitCenter"
-                        android:src="@drawable/news"
+                        android:src="@drawable/countries"
                         app:tint="@color/white" />
                 </com.google.android.material.card.MaterialCardView>
 
@@ -224,7 +224,7 @@
                         android:paddingBottom="@dimen/_16sdp">
 
                         <TextView
-                            android:id="@+id/tvNews"
+                            android:id="@+id/tvCountries"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="@string/show"
@@ -239,10 +239,10 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_marginEnd="@dimen/_8sdp"
-                            android:text="@string/news"
+                            android:text="@string/countries"
                             android:textColor="@color/primary_text"
                             android:textSize="@dimen/_12ssp"
-                            app:layout_constraintEnd_toStartOf="@id/tvNews"
+                            app:layout_constraintEnd_toStartOf="@id/tvCountries"
                             app:layout_constraintStart_toStartOf="parent"
                             app:layout_constraintTop_toTopOf="parent" />
                     </androidx.constraintlayout.widget.ConstraintLayout>
@@ -252,7 +252,7 @@
             </androidx.constraintlayout.widget.ConstraintLayout>
 
             <androidx.constraintlayout.widget.ConstraintLayout
-                android:id="@+id/clMovies"
+                android:id="@+id/clCategories"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:paddingTop="@dimen/_16sdp">
@@ -271,7 +271,7 @@
                         android:layout_height="match_parent"
                         android:layout_margin="@dimen/_8sdp"
                         android:scaleType="fitCenter"
-                        android:src="@drawable/movies"
+                        android:src="@drawable/category"
                         app:tint="@color/white" />
                 </com.google.android.material.card.MaterialCardView>
 
@@ -294,7 +294,7 @@
                         android:paddingBottom="@dimen/_16sdp">
 
                         <TextView
-                            android:id="@+id/tvMovies"
+                            android:id="@+id/tvCategories"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="@string/show"
@@ -309,10 +309,10 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_marginEnd="@dimen/_8sdp"
-                            android:text="@string/movies"
+                            android:text="@string/categories"
                             android:textColor="@color/primary_text"
                             android:textSize="@dimen/_12ssp"
-                            app:layout_constraintEnd_toStartOf="@id/tvMovies"
+                            app:layout_constraintEnd_toStartOf="@id/tvCategories"
                             app:layout_constraintStart_toStartOf="parent"
                             app:layout_constraintTop_toTopOf="parent" />
                     </androidx.constraintlayout.widget.ConstraintLayout>
@@ -323,7 +323,7 @@
 
 
             <androidx.constraintlayout.widget.ConstraintLayout
-                android:id="@+id/clChannels"
+                android:id="@+id/clRegions"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:paddingTop="@dimen/_16sdp">
@@ -342,7 +342,7 @@
                         android:layout_height="match_parent"
                         android:layout_margin="@dimen/_8sdp"
                         android:scaleType="fitCenter"
-                        android:src="@drawable/tv"
+                        android:src="@drawable/region"
                         app:tint="@color/white" />
                 </com.google.android.material.card.MaterialCardView>
 
@@ -365,7 +365,7 @@
                         android:paddingBottom="@dimen/_16sdp">
 
                         <TextView
-                            android:id="@+id/tvChannels"
+                            android:id="@+id/tvRegions"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="@string/show"
@@ -380,10 +380,10 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_marginEnd="@dimen/_8sdp"
-                            android:text="@string/channels"
+                            android:text="@string/regions"
                             android:textColor="@color/primary_text"
                             android:textSize="@dimen/_12ssp"
-                            app:layout_constraintEnd_toStartOf="@id/tvChannels"
+                            app:layout_constraintEnd_toStartOf="@id/tvRegions"
                             app:layout_constraintStart_toStartOf="parent"
                             app:layout_constraintTop_toTopOf="parent" />
                     </androidx.constraintlayout.widget.ConstraintLayout>
@@ -393,7 +393,7 @@
             </androidx.constraintlayout.widget.ConstraintLayout>
 
             <androidx.constraintlayout.widget.ConstraintLayout
-                android:id="@+id/clMusic"
+                android:id="@+id/clLanguages"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:paddingTop="@dimen/_16sdp">
@@ -412,7 +412,7 @@
                         android:layout_height="match_parent"
                         android:layout_margin="@dimen/_8sdp"
                         android:scaleType="fitCenter"
-                        android:src="@drawable/music"
+                        android:src="@drawable/language"
                         app:tint="@color/white" />
                 </com.google.android.material.card.MaterialCardView>
 
@@ -435,7 +435,7 @@
                         android:paddingBottom="@dimen/_16sdp">
 
                         <TextView
-                            android:id="@+id/tvMusic"
+                            android:id="@+id/tvLanguages"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="@string/show"
@@ -450,10 +450,10 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_marginEnd="@dimen/_8sdp"
-                            android:text="@string/music"
+                            android:text="@string/languages"
                             android:textColor="@color/primary_text"
                             android:textSize="@dimen/_12ssp"
-                            app:layout_constraintEnd_toStartOf="@id/tvMusic"
+                            app:layout_constraintEnd_toStartOf="@id/tvLanguages"
                             app:layout_constraintStart_toStartOf="parent"
                             app:layout_constraintTop_toTopOf="parent" />
                     </androidx.constraintlayout.widget.ConstraintLayout>
@@ -463,7 +463,7 @@
             </androidx.constraintlayout.widget.ConstraintLayout>
 
             <androidx.constraintlayout.widget.ConstraintLayout
-                android:id="@+id/clLink"
+                android:id="@+id/clCustom"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:paddingTop="@dimen/_16sdp">
@@ -505,7 +505,7 @@
                         android:paddingBottom="@dimen/_16sdp">
 
                         <TextView
-                            android:id="@+id/tvLink"
+                            android:id="@+id/tvCustom"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="@string/show"
@@ -520,10 +520,10 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_marginEnd="@dimen/_8sdp"
-                            android:text="@string/add_link"
+                            android:text="@string/custom"
                             android:textColor="@color/primary_text"
                             android:textSize="@dimen/_12ssp"
-                            app:layout_constraintEnd_toStartOf="@id/tvLink"
+                            app:layout_constraintEnd_toStartOf="@id/tvCustom"
                             app:layout_constraintStart_toStartOf="parent"
                             app:layout_constraintTop_toTopOf="parent" />
                     </androidx.constraintlayout.widget.ConstraintLayout>

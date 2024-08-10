@@ -22,7 +22,7 @@ class HTMLActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_html)
 
-        val name = intent.getStringExtra("Name")
+        val name = intent.getStringExtra("Url")
 
         link = name
 

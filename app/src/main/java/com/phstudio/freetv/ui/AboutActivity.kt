@@ -26,7 +26,6 @@ class AboutActivity : AppCompatActivity() {
             findViewById<Button>(R.id.btTelegram),
             findViewById<Button>(R.id.btLicense),
             findViewById<Button>(R.id.btReportBug),
-            findViewById<Button>(R.id.btShare)
         )
 
         items.forEach { item ->
@@ -51,26 +50,6 @@ class AboutActivity : AppCompatActivity() {
                     R.id.btTelegram -> sendActivity(getString(R.string.telegram))
                     R.id.btLicense -> sendActivity(getString(R.string.privacy))
                     R.id.btReportBug -> sendActivity(getString(R.string.report))
-                    else -> {
-                        val intent = Intent(Intent.ACTION_SEND)
-                        intent.putExtra(
-                            Intent.EXTRA_SUBJECT,
-                            resources.getString(R.string.share_mail)
-                        )
-                        intent.putExtra(
-                            Intent.EXTRA_TEXT,
-                            (resources.getString(R.string.email_text) + "\n" + resources.getString(
-                                R.string.email_text2
-                            ) + "\n" + resources.getString(R.string.email_text3))
-                        )
-                        intent.type = "message/rfc822"
-                        startActivity(
-                            Intent.createChooser(
-                                intent,
-                                resources.getString(R.string.select_email)
-                            )
-                        )
-                    }
                 }
             }
         }

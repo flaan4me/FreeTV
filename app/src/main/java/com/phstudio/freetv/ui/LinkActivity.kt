@@ -41,8 +41,9 @@ class LinkActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.layout_country)
 
+        val type = intent.getStringExtra("type")
+
         val country = intent.getStringExtra("country")
-        val code = intent.getStringExtra("code")
 
         val tvPrimary: TextView = findViewById(R.id.tvPrimary)
         tvPrimary.text = intent.getStringExtra("tvPrimary")
@@ -51,6 +52,7 @@ class LinkActivity : AppCompatActivity() {
         val image = intent.getIntExtra("ivDrawable", 0)
         ivDrawable.setImageResource(image)
 
+
         val recyclerView: RecyclerView = findViewById(R.id.rvCountry)
         customAdapter =
             ItemAdapter2(
@@ -58,15 +60,17 @@ class LinkActivity : AppCompatActivity() {
                 filteredLinkList,
                 object : ItemAdapter2.OnItemClickListener {
                     override fun onItemClick(position: Int) {
-                        val (_, _, stringList2) = splitList(filteredLinkList)
-                        val url = stringList2[position]
+                        val (nameList, _, urlList) = splitList(filteredLinkList)
+                        val name = nameList[position]
+                        val url = urlList[position]
                         if (url.contains("https://www.youtube.com")) {
                             val intent = Intent(this@LinkActivity, HTMLActivity::class.java)
-                            intent.putExtra("Name", url)
+                            intent.putExtra("Url", url)
                             startActivity(intent)
                         } else {
                             val intent = Intent(this@LinkActivity, PlayerActivity::class.java)
-                            intent.putExtra("Name", url)
+                            intent.putExtra("Name", name)
+                            intent.putExtra("Url", url)
                             startActivity(intent)
                         }
 
@@ -104,52 +108,75 @@ class LinkActivity : AppCompatActivity() {
             }
         })
 
-        when (country) {
-            "zz_news_en" -> {
-                prepareItemsNews()
-            }
+        when (type) {
+            "countries" -> {
+                val code = intent.getStringExtra("code")
+                getPublic(2, "https://iptv-org.github.io/iptv/countries/$code.m3u")
 
-            "music" -> {
-                prepareItemsMusic()
-            }
-        }
+                Timer().schedule(1000) {
+                    getPublic(
+                        1,
+                        "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlists/playlist_$country.m3u8"
+                    )
 
-        if (country != "music") {
-            getPublic(
-                1,
-                "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlists/playlist_$country.m3u8"
-            )
-        }
-        Timer().schedule(1000) {
-            when (country) {
-                "zz_news_en" -> {
-                    getPublic(2, "https://iptv-org.github.io/iptv/categories/news.m3u")
                 }
 
-                "zz_movies" -> {
-                    getPublic(2, "https://iptv-org.github.io/iptv/categories/movies.m3u")
-                }
-
-                "music" -> {
-                    getPublic(2, "https://iptv-org.github.io/iptv/categories/music.m3u")
-                }
-
-                else -> {
-                    getPublic(2, "https://iptv-org.github.io/iptv/countries/$code.m3u")
+                if (country == "germany") {
+                    Timer().schedule(1000) {
+                        getPublic(
+                            3,
+                            "https://raw.githubusercontent.com/jnk22/kodinerds-iptv/master/iptv/kodi/kodi_tv_main.m3u"
+                        )
+                    }
+                    Timer().schedule(1000) {
+                        getPublic(
+                            3,
+                            "https://raw.githubusercontent.com/jnk22/kodinerds-iptv/master/iptv/kodi/kodi_tv_regional.m3u"
+                        )
+                    }
                 }
             }
-        }
 
-        if (country == "germany") {
-            getPublic(
-                3,
-                "https://raw.githubusercontent.com/jnk22/kodinerds-iptv/master/iptv/kodi/kodi_tv_main.m3u"
-            )
-            Timer().schedule(1000) {
-                getPublic(
-                    3,
-                    "https://raw.githubusercontent.com/jnk22/kodinerds-iptv/master/iptv/kodi/kodi_tv_regional.m3u"
-                )
+            "categories" -> {
+                getPublic(2, "https://iptv-org.github.io/iptv/categories/$country.m3u")
+                when (country) {
+                    "news" -> {
+                        prepareItemsNews()
+                        Timer().schedule(1000)
+                        {
+                            getPublic(
+                                1,
+                                "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlists/playlist_zz_news_en.m3u8"
+                            )
+                        }
+                    }
+                    "music" -> {
+                        prepareItemsMusic()
+                        Timer().schedule(1000)
+                        {
+                            getPublic(
+                                1,
+                                "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlists/playlist_music.m3u8"
+                            )
+                        }
+                    }
+                    "movies" ->
+                    {
+                        Timer().schedule(1000)
+                        {
+                            getPublic(
+                                1,
+                                "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlists/playlist_zz_movies.m3u8"
+                            )
+                        }
+                    }
+                }
+            }
+            "regions" -> {
+                getPublic(2, "https://iptv-org.github.io/iptv/regions/$country.m3u")
+            }
+            "languages"->{
+                getPublic(2, "https://iptv-org.github.io/iptv/languages/$country.m3u")
             }
         }
     }

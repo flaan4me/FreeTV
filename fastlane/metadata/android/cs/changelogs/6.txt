@@ -1,0 +1,3 @@
+-Nový přehrávač
+-Úprava rozhraní
+-Podpora novějších zařízení

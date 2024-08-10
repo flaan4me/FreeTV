@@ -1,0 +1,3 @@
+-New player
+-Modify interface
+-Newer device support

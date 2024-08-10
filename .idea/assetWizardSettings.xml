@@ -332,7 +332,7 @@
                           <map>
                             <entry key="assetSourceType" value="FILE" />
                             <entry key="outputName" value="ic_monochrome" />
-                            <entry key="sourceFile" value="$PROJECT_DIR$/../monochrome-min.svg" />
+                            <entry key="sourceFile" value="$PROJECT_DIR$/../ic_monochrome.svg" />
                           </map>
                         </option>
                       </PersistentState>

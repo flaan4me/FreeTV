@@ -296,16 +296,20 @@ class CustomActivity : AppCompatActivity() {
         val cursor = db.readFromDb()
         cursor!!.moveToPosition(pos)
         val url: String = cursor.getString(cursor.getColumnIndex(DatabaseHelper.COL3))
+        val name: String = cursor.getString(cursor.getColumnIndex(DatabaseHelper.COL1))
+
         cursor.close()
         db.close()
 
-        if (url.contains("https://www.youtube.com") || url.contains("https://www.televizeseznam.cz/tv")) {
+        if (url.contains("youtube") || url.contains("televizeseznam")) {
             val intent = Intent(this@CustomActivity, HTMLActivity::class.java)
-            intent.putExtra("Name", url)
+            intent.putExtra("Url", url)
             startActivity(intent)
         } else {
             val intent = Intent(this@CustomActivity, PlayerActivity::class.java)
-            intent.putExtra("Name", url)
+            intent.putExtra("Url", url)
+            intent.putExtra("Name", name)
+
             startActivity(intent)
         }
     }
