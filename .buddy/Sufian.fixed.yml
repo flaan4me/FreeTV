@@ -4,3 +4,10 @@
     refs:
     - "refs/heads/master"
   fail_on_prepare_env_warning: true
+  actions:
+  - action: "gh auth status"
+    type: "GIT_HUB_CLI"
+    integration: "n4jykJ5A7YXpjJ5brODaK3R6wQ"
+    execute_commands:
+    - "gh auth status"
+    shell: "BASH"
